@@ -122,7 +122,7 @@ export const AccountBalanceCard = ({ onBalanceUpdated }: AccountBalanceCardProps
               Current Balance
             </Typography>
 
-            <Typography variant="h4" sx={amountSx}>
+            <Typography variant="h4" sx={getAmountSx(balance.amount)}>
               £{balance.amount.toFixed(2)}
             </Typography>
 
@@ -221,11 +221,19 @@ const labelSx = {
   mb: 1,
 };
 
-const amountSx = {
-  color: '#10b981',
+const amountBaseSx = {
   fontWeight: 700,
   mb: 1,
 };
+
+const positiveAmountColor = '#10b981';
+
+const negativeAmountColor = '#ef4444';
+
+const getAmountSx = (value: number) => ({
+  ...amountBaseSx,
+  color: value < 0 ? negativeAmountColor : positiveAmountColor,
+});
 
 const dateSx = {
   display: 'flex',

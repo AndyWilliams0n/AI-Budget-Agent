@@ -1,10 +1,12 @@
 // KPI Card component for dashboard metrics
 import { Card, CardContent, Box, Typography } from '@mui/material';
-import { LucideIcon } from 'lucide-react';
+
+import type { LucideIcon } from 'lucide-react';
 
 interface KPICardProps {
   title: string;
-  value: string | number;
+  value: number;
+  currencySymbol?: string;
   subtitle?: string;
   icon: LucideIcon;
   iconColor?: string;
@@ -19,6 +21,7 @@ interface KPICardProps {
 export const KPICard = ({
   title,
   value,
+  currencySymbol,
   subtitle,
   icon: Icon,
   iconColor = '#6366f1',
@@ -40,8 +43,8 @@ export const KPICard = ({
           </Box>
         </Box>
 
-        <Typography variant="h3" sx={valueSx}>
-          {value}
+        <Typography variant="h3" sx={getValueSx(value)}>
+          {currencySymbol}{formatValue(value, Boolean(currencySymbol))}
         </Typography>
 
         {subtitle && (
@@ -100,10 +103,17 @@ const iconContainerSx = {
   justifyContent: 'center',
 };
 
-const valueSx = {
+const valueBaseSx = {
   fontWeight: 700,
   mb: 1,
 };
+
+const negativeValueColor = '#ef4444';
+
+const getValueSx = (value: number) => ({
+  ...valueBaseSx,
+  color: value < 0 ? negativeValueColor : undefined,
+});
 
 const subtitleSx = {
   color: '#94a3b8',
@@ -117,5 +127,13 @@ const getTrendValueSx = (isPositive: boolean) => ({
   color: isPositive ? '#10b981' : '#ef4444',
   fontWeight: 600,
 });
+
+const formatValue = (value: number, isCurrency: boolean) => {
+  if (!isCurrency) {
+    return value;
+  }
+
+  return value.toFixed(2);
+};
 
 

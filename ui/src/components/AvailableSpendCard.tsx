@@ -79,15 +79,26 @@ export const AvailableSpendCard = ({ currentBalance, upcomingOutgoings = 0 }: Av
               Without Overdraft
             </Typography>
 
-            <Typography variant="h4" sx={amountWithoutSx}>
+            <Typography variant="h4" sx={getAmountSx(availableWithoutOverdraft)}>
               £{availableWithoutOverdraft.toFixed(2)}
             </Typography>
 
-            <Box sx={detailsSx}>
+            <Box sx={breakdownSx}>
               <Typography variant="caption" sx={mutedCaptionSx}>
                 Balance: £{balanceAmount.toFixed(2)}
-                {upcomingOutgoings > 0 && ` - Pending: £${upcomingOutgoings.toFixed(2)}`}
               </Typography>
+
+              {upcomingOutgoings > 0 && (
+                <>
+                  <Typography variant="caption" sx={mutedCaptionSx}>
+                    -
+                  </Typography>
+
+                  <Typography variant="caption" sx={pendingCaptionSx}>
+                    Pending Bills: £{upcomingOutgoings.toFixed(2)}
+                  </Typography>
+                </>
+              )}
             </Box>
           </Box>
 
@@ -102,7 +113,7 @@ export const AvailableSpendCard = ({ currentBalance, upcomingOutgoings = 0 }: Av
               <TrendingUp size={14} color="#10b981" />
             </Box>
 
-            <Typography variant="h4" sx={amountWithSx}>
+            <Typography variant="h4" sx={getAmountSx(availableWithOverdraft)}>
               £{availableWithOverdraft.toFixed(2)}
             </Typography>
 
@@ -177,21 +188,19 @@ const labelSx = {
   mb: 1,
 };
 
-const amountWithoutSx = {
-  color: '#6366f1',
+const positiveAmountColor = '#10b981';
+
+const negativeAmountColor = '#ef4444';
+
+const amountValueSx = {
   fontWeight: 700,
   mb: 1,
 };
 
-const amountWithSx = {
-  color: '#10b981',
-  fontWeight: 700,
-  mb: 1,
-};
-
-const detailsSx = {
-  mt: 0.5,
-};
+const getAmountSx = (value: number) => ({
+  ...amountValueSx,
+  color: value < 0 ? negativeAmountColor : positiveAmountColor,
+});
 
 const withOverdraftHeaderSx = {
   display: 'flex',

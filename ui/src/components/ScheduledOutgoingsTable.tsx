@@ -651,7 +651,7 @@ const summaryLabelSx = {
 };
 
 const summaryValueSx = {
-  color: '#ef4444',
+  color: '#fff',
   fontWeight: 700,
 };
 

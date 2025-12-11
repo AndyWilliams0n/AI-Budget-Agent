@@ -413,7 +413,8 @@ export const Dashboard = () => {
           <Grid item xs={12} sm={6} md={3}>
             <KPICard
               title="Monthly Income"
-              value={`£${stats.total_income.toFixed(2)}`}
+              value={stats.total_income}
+              currencySymbol="£"
               subtitle={`${stats.income_count} transactions`}
               icon={TrendingUp}
               iconColor="#10b981"
@@ -423,7 +424,8 @@ export const Dashboard = () => {
           <Grid item xs={12} sm={6} md={3}>
             <KPICard
               title="Direct Debits"
-              value={`£${stats.total_outgoings.toFixed(2)}`}
+              value={stats.total_outgoings}
+              currencySymbol="£"
               subtitle={`${stats.outgoing_count} transactions`}
               icon={TrendingDown}
               iconColor="#ef4444"
@@ -433,7 +435,8 @@ export const Dashboard = () => {
           <Grid item xs={12} sm={6} md={3}>
             <KPICard
               title="All Other"
-              value={`£${stats.total_purchases.toFixed(2)}`}
+              value={stats.total_purchases}
+              currencySymbol="£"
               subtitle={`${stats.purchase_count} transactions`}
               icon={ShoppingCart}
               iconColor="#f59e0b"
@@ -443,7 +446,8 @@ export const Dashboard = () => {
           <Grid item xs={12} sm={6} md={3}>
             <KPICard
               title="Net Difference"
-              value={`£${stats.net.toFixed(2)}`}
+              value={stats.net}
+              currencySymbol="£"
               subtitle={stats.net >= 0 ? 'Surplus' : 'Deficit'}
               icon={stats.net >= 0 ? Wallet : DollarSign}
               iconColor={stats.net >= 0 ? '#10b981' : '#ef4444'}
