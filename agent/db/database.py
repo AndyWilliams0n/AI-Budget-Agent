@@ -492,7 +492,11 @@ class Database:
             List of Balance objects
         """
         with self.get_session() as session:
-            query = session.query(Balance).order_by(Balance.recorded_at.desc())
+            query = session.query(Balance).order_by(
+                Balance.recorded_at.desc(),
+                Balance.created_at.desc(),
+                Balance.id.desc()
+            )
             
             if limit:
                 query = query.limit(limit)
@@ -507,7 +511,11 @@ class Database:
             Latest Balance object or None
         """
         with self.get_session() as session:
-            return session.query(Balance).order_by(Balance.recorded_at.desc()).first()
+            return session.query(Balance).order_by(
+                Balance.recorded_at.desc(),
+                Balance.created_at.desc(),
+                Balance.id.desc()
+            ).first()
     
     # Overdraft methods
     
@@ -544,7 +552,11 @@ class Database:
             List of Overdraft objects
         """
         with self.get_session() as session:
-            query = session.query(Overdraft).order_by(Overdraft.recorded_at.desc())
+            query = session.query(Overdraft).order_by(
+                Overdraft.recorded_at.desc(),
+                Overdraft.created_at.desc(),
+                Overdraft.id.desc()
+            )
             
             if limit:
                 query = query.limit(limit)
@@ -559,5 +571,9 @@ class Database:
             Latest Overdraft object or None
         """
         with self.get_session() as session:
-            return session.query(Overdraft).order_by(Overdraft.recorded_at.desc()).first()
+            return session.query(Overdraft).order_by(
+                Overdraft.recorded_at.desc(),
+                Overdraft.created_at.desc(),
+                Overdraft.id.desc()
+            ).first()
 
