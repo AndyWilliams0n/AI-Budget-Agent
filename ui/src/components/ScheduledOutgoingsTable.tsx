@@ -215,15 +215,46 @@ export const ScheduledOutgoingsTable = ({
     }
   };
 
-  // Filter raw transactions that could be imported (debits only)
+  // Filter raw transactions that could be imported (include debits, card purchases, credit payments)
   const importableTransactions = rawTransactions.filter(t => {
     const subcategory = (t.override_subcategory || t.subcategory)?.toLowerCase() || '';
 
-    return subcategory.includes('direct debit') || 
-           subcategory.includes('bill payment') || 
-           subcategory.includes('standing order') ||
-           subcategory.includes('recurring monthly payment');
+    const memo = t.memo?.toLowerCase() || '';
+
+    const account = t.account?.toLowerCase() || '';
+
+    const keywords = [
+      'direct debit',
+      'bill payment',
+      'standing order',
+      'recurring monthly payment',
+      'credit card payment',
+      'credit payment',
+      'card purchase',
+      'card payment',
+    ];
+
+    return keywords.some(keyword => 
+      subcategory.includes(keyword) || 
+      memo.includes(keyword) || 
+      account.includes(keyword)
+    );
   });
+
+  const isTransactionAlreadyScheduled = (transaction: RawTransaction) => {
+    const normalizedTransactionName = (transaction.memo || transaction.account || '').trim().toLowerCase();
+
+    const transactionAmount = Math.abs(transaction.amount);
+
+    return outgoings.some(outgoing => {
+      const normalizedOutgoingName = (outgoing.merchant || outgoing.memo || '').trim().toLowerCase();
+
+      const outgoingAmount = Math.abs(outgoing.amount);
+
+      return normalizedOutgoingName === normalizedTransactionName &&
+        Math.abs(outgoingAmount - transactionAmount) < 0.01;
+    });
+  };
 
   return (
     <Card sx={cardSx}>
@@ -516,37 +547,43 @@ export const ScheduledOutgoingsTable = ({
               </TableHead>
 
               <TableBody>
-                {importableTransactions.map((transaction) => (
-                  <TableRow 
-                    key={transaction.id} 
-                    sx={getImportRowSx(selectedTransaction?.id === transaction.id)}
-                  >
-                    <TableCell sx={bodyCellSx}>
-                      {new Date(transaction.transaction_date).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                      })}
-                    </TableCell>
+                {importableTransactions.map((transaction) => {
+                  const isAlreadyScheduled = isTransactionAlreadyScheduled(transaction);
 
-                    <TableCell sx={bodyCellNameSx}>
-                      {transaction.memo || transaction.account}
-                    </TableCell>
+                  return (
+                    <TableRow 
+                      key={transaction.id} 
+                      sx={getImportRowSx(selectedTransaction?.id === transaction.id)}
+                    >
+                      <TableCell sx={bodyCellSx}>
+                        {new Date(transaction.transaction_date).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                        })}
+                      </TableCell>
 
-                    <TableCell align="right" sx={bodyCellAmountSx}>
-                      -£{Math.abs(transaction.amount).toFixed(2)}
-                    </TableCell>
+                      <TableCell sx={bodyCellNameSx}>
+                        <Box sx={importNameTextSx(isAlreadyScheduled)}>
+                          {transaction.memo || transaction.account}
+                        </Box>
+                      </TableCell>
 
-                    <TableCell sx={bodyCellSx}>
-                      <Button
-                        size="small"
-                        onClick={() => setSelectedTransaction(transaction)}
-                        sx={selectedTransaction?.id === transaction.id ? selectedButtonSx : selectButtonSx}
-                      >
-                        {selectedTransaction?.id === transaction.id ? 'Selected' : 'Select'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableCell align="right" sx={bodyCellAmountSx}>
+                        -£{Math.abs(transaction.amount).toFixed(2)}
+                      </TableCell>
+
+                      <TableCell sx={bodyCellSx}>
+                        <Button
+                          size="small"
+                          onClick={() => setSelectedTransaction(transaction)}
+                          sx={selectedTransaction?.id === transaction.id ? selectedButtonSx : selectButtonSx}
+                        >
+                          {selectedTransaction?.id === transaction.id ? 'Selected' : 'Select'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -830,6 +867,11 @@ const importHelperTextSx = {
   color: '#94a3b8',
   mb: 2,
 };
+
+const importNameTextSx = (isAlreadyScheduled: boolean) => ({
+  textDecoration: isAlreadyScheduled ? 'line-through' : 'none',
+  color: isAlreadyScheduled ? '#94a3b8' : '#e2e8f0',
+});
 
 const selectButtonSx = {
   color: '#6366f1',
