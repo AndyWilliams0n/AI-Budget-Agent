@@ -1,5 +1,6 @@
 # Google ADK Agent for processing bank statements
 
+import difflib
 import google.generativeai as genai
 from typing import Dict, List, Tuple, Optional
 import os
@@ -91,19 +92,25 @@ class BankStatementAgent:
             
             return transaction
     
-    def process_csv_file(self, file_content: str, use_ai_analysis: bool = False) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+    def process_csv_file(self, file_content: str, use_ai_analysis: bool = False, existing_outgoings: Optional[List[Dict]] = None) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         """
         Process a bank statement CSV file
         
         Args:
             file_content: String content of the CSV file
             use_ai_analysis: Whether to use AI analysis on transactions
+            existing_outgoings: Existing outgoing transactions (from DB) used to prevent duplicates
             
         Returns:
             Tuple of (outgoings, income, purchases) lists
         """
+        existing_outgoings = existing_outgoings or []
+        
         # Parse and categorize transactions
         outgoings, income, purchases = self.csv_processor.process_statement(file_content)
+        
+        # Remove duplicates against existing and in-batch outgoings
+        outgoings = self._filter_outgoing_duplicates(outgoings, existing_outgoings)
         
         # Optionally enhance with AI analysis
         if use_ai_analysis:
@@ -113,18 +120,20 @@ class BankStatementAgent:
         
         return outgoings, income, purchases
     
-    def process_multiple_csv_files(self, file_contents: List[str], use_ai_analysis: bool = False) -> Tuple[List[Dict], List[Dict], List[Dict], Dict]:
+    def process_multiple_csv_files(self, file_contents: List[str], use_ai_analysis: bool = False, existing_outgoings: Optional[List[Dict]] = None) -> Tuple[List[Dict], List[Dict], List[Dict], Dict]:
         """
         Process multiple months of bank statement CSV files
         
         Args:
             file_contents: List of CSV file contents
             use_ai_analysis: Whether to use AI analysis on transactions
+            existing_outgoings: Existing outgoing transactions (from DB) used to prevent duplicates
             
         Returns:
             Tuple of (consistent_outgoings, consistent_income, all_purchases, statistics)
         """
         num_months = len(file_contents)
+        seen_outgoings = list(existing_outgoings or [])
         
         print(f"{Colors.GREY}📊 Processing {num_months} month(s) of data...{Colors.RESET}")
         
@@ -136,10 +145,11 @@ class BankStatementAgent:
         for idx, file_content in enumerate(file_contents):
             print(f"{Colors.GREY}📄 Processing month {idx + 1}/{num_months}...{Colors.RESET}")
             
-            outgoings, income, purchases = self.process_csv_file(file_content, use_ai_analysis=False)
+            outgoings, income, purchases = self.process_csv_file(file_content, use_ai_analysis=False, existing_outgoings=seen_outgoings)
             all_outgoings.extend(outgoings)
             all_income.extend(income)
             all_purchases.extend(purchases)
+            seen_outgoings.extend(outgoings)
         
         # If only one month, return all transactions
         if num_months == 1:
@@ -159,6 +169,61 @@ class BankStatementAgent:
         print(f"{Colors.GREY}✅ Found {len(consistent_outgoings)} consistent outgoings and {len(consistent_income)} consistent income sources{Colors.RESET}")
         
         return consistent_outgoings, consistent_income, all_purchases, stats
+    
+    def _filter_outgoing_duplicates(self, new_outgoings: List[Dict], known_outgoings: List[Dict]) -> List[Dict]:
+        """
+        Filter out outgoing transactions that already exist based on similarity
+        """
+        unique_outgoings = []
+        seen_outgoings = list(known_outgoings)
+        
+        for candidate in new_outgoings:
+            if not any(self._is_duplicate_outgoing(candidate, existing) for existing in seen_outgoings):
+                unique_outgoings.append(candidate)
+                seen_outgoings.append(candidate)
+        
+        return unique_outgoings
+    
+    def _is_duplicate_outgoing(self, candidate: Dict, existing: Dict, day_tolerance: int = 3, amount_tolerance: float = 0.07, name_similarity: float = 0.85) -> bool:
+        """
+        Determine if an outgoing transaction is a duplicate of an existing one
+        """
+        candidate_name = (candidate.get('merchant') or candidate.get('memo') or '').lower().strip()
+        existing_name = (existing.get('merchant') or existing.get('memo') or '').lower().strip()
+        
+        if not candidate_name or not existing_name:
+            return False
+        
+        name_ratio = difflib.SequenceMatcher(None, candidate_name, existing_name).ratio()
+        
+        if name_ratio < name_similarity:
+            return False
+        
+        candidate_date = candidate.get('transaction_date')
+        existing_date = existing.get('transaction_date')
+        candidate_dom = candidate.get('day_of_month')
+        existing_dom = existing.get('day_of_month')
+        days_apart = None
+        
+        if candidate_date and existing_date:
+            days_apart = abs((candidate_date - existing_date).days)
+        
+        if days_apart is None and candidate_dom is not None and existing_dom is not None:
+            days_apart = abs(candidate_dom - existing_dom)
+        
+        candidate_amount = candidate.get('amount')
+        existing_amount = existing.get('amount')
+        amounts_close = False
+        
+        if candidate_amount is not None and existing_amount is not None:
+            candidate_abs = abs(candidate_amount)
+            existing_abs = abs(existing_amount)
+            diff = abs(candidate_abs - existing_abs)
+            amounts_close = diff <= max(1, amount_tolerance * max(candidate_abs, existing_abs))
+        
+        day_is_close = days_apart is not None and days_apart <= day_tolerance
+        
+        return name_ratio >= name_similarity and (day_is_close or amounts_close)
     
     def _find_consistent_transactions(self, transactions: List[Dict], num_months: int, key_field: str) -> List[Dict]:
         """
